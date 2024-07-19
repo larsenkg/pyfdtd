@@ -16,13 +16,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import numpy
 import math
-from material import Material
+
+import numpy
 from scipy import constants
 
+from .material import Material
 
-def pml(size, delta, thickness=20.0, mode='TMz'):
+
+def pml(size, delta, thickness=20.0, mode="TMz"):
     """creates a perfectly matched layer as surounding boundary conditions"""
     # get patameter
     sizeX, sizeY = size
@@ -31,50 +33,68 @@ def pml(size, delta, thickness=20.0, mode='TMz'):
     # crate material
     shapeX, shapeY = int(sizeX / deltaX), int(sizeY / deltaY)
     sigma = {
-            'electricX': numpy.zeros((shapeX, shapeY)),
-            'electricY': numpy.zeros((shapeX, shapeY)),
-            'magneticX': numpy.zeros((shapeX, shapeY)),
-            'magneticY': numpy.zeros((shapeX, shapeY))}
+        "electricX": numpy.zeros((shapeX, shapeY)),
+        "electricY": numpy.zeros((shapeX, shapeY)),
+        "magneticX": numpy.zeros((shapeX, shapeY)),
+        "magneticY": numpy.zeros((shapeX, shapeY)),
+    }
     mask = numpy.zeros((shapeX, shapeY))
 
     # set constant
     c = constants.mu_0 / constants.epsilon_0
 
     # init PML
-    sigmaMax = -(3.0 + 1.0) * constants.epsilon_0 * constants.c \
-            * math.log(1.0e-5) / (2.0 * deltaX * thickness)
+    sigmaMax = (
+        -(3.0 + 1.0)
+        * constants.epsilon_0
+        * constants.c
+        * math.log(1.0e-5)
+        / (2.0 * deltaX * thickness)
+    )
 
     for n in range(0, int(thickness + 1.0), 1):
         for j in range(0, int(shapeY), 1):
-            sigma['electricY'][n, j] = sigmaMax \
-                    * math.pow(float(thickness - n) / thickness, 3.0)
-            sigma['magneticY'][n, j] = sigmaMax \
-                    * math.pow(float(thickness - n - 0.5) / thickness, 3.0) * c
+            sigma["electricY"][n, j] = sigmaMax * math.pow(
+                float(thickness - n) / thickness, 3.0
+            )
+            sigma["magneticY"][n, j] = (
+                sigmaMax * math.pow(float(thickness - n - 0.5) / thickness, 3.0) * c
+            )
             mask[n, j] = 1.0
 
-            sigma['electricY'][shapeX - 1 - n, j] = sigmaMax \
-                    * math.pow(float(thickness - n) / thickness, 3.0)
-            sigma['magneticY'][shapeX - 1 - n, j] = sigmaMax \
-                    * math.pow(float(thickness - n + 0.5) / thickness, 3.0) * c
+            sigma["electricY"][shapeX - 1 - n, j] = sigmaMax * math.pow(
+                float(thickness - n) / thickness, 3.0
+            )
+            sigma["magneticY"][shapeX - 1 - n, j] = (
+                sigmaMax * math.pow(float(thickness - n + 0.5) / thickness, 3.0) * c
+            )
             mask[shapeX - 1 - n, j] = 1.0
 
         for i in range(0, int(shapeX), 1):
-            sigma['electricX'][i, n] = sigmaMax \
-                    * math.pow(float(thickness - n) / thickness, 3.0)
-            sigma['magneticX'][i, n] = sigmaMax \
-                    * math.pow(float(thickness - n - 0.5) / thickness, 3.0) * c
+            sigma["electricX"][i, n] = sigmaMax * math.pow(
+                float(thickness - n) / thickness, 3.0
+            )
+            sigma["magneticX"][i, n] = (
+                sigmaMax * math.pow(float(thickness - n - 0.5) / thickness, 3.0) * c
+            )
             mask[i, n] = 1.0
 
-            sigma['electricX'][i, shapeY - 1 - n] = sigmaMax \
-                    * math.pow(float(thickness - n) / thickness, 3.0)
-            sigma['magneticX'][i, shapeY - 1 - n] = sigmaMax \
-                    * math.pow(float(thickness - n + 0.5) / thickness, 3.0) * c
+            sigma["electricX"][i, shapeY - 1 - n] = sigmaMax * math.pow(
+                float(thickness - n) / thickness, 3.0
+            )
+            sigma["magneticX"][i, shapeY - 1 - n] = (
+                sigmaMax * math.pow(float(thickness - n + 0.5) / thickness, 3.0) * c
+            )
             mask[i, shapeY - 1 - n] = 1.0
 
     # create layer
-    electric = (Material.epsilon(1.0, sigma['electricX']),
-            Material.epsilon(1.0, sigma['electricY']))
-    magnetic = (Material.mu(1.0, sigma['magneticX']),
-            Material.mu(1.0, sigma['magneticY']))
+    electric = (
+        Material.epsilon(1.0, sigma["electricX"]),
+        Material.epsilon(1.0, sigma["electricY"]),
+    )
+    magnetic = (
+        Material.mu(1.0, sigma["magneticX"]),
+        Material.mu(1.0, sigma["magneticY"]),
+    )
 
     return electric, magnetic, mask

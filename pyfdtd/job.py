@@ -17,34 +17,34 @@
 
 
 import json
-from material import Material
-from solver import Solver
-from field import Field
-from listener import Listener
-from parser import BooleanParser, material_from_string, source_from_string
+
+from .field import Field
+from .listener import Listener
+from .material import Material
+from .parser import BooleanParser, material_from_string, source_from_string
+from .solver import Solver
 
 
 class Job:
     def __init__(self):
         # create standart values
-        self.config = {'size': (0.4, 0.4), 'delta': (0.001, 0.001), 'duration':
-                5e-9}
+        self.config = {"size": (0.4, 0.4), "delta": (0.001, 0.001), "duration": 5e-9}
         self.listener = []
         self.source = []
-        self.material = {'electric': [], 'magnetic': []}
+        self.material = {"electric": [], "magnetic": []}
 
     def load(self, fname):
         # open file
-        f = open(fname, 'rb')
+        f = open(fname, "rb")
 
         # unjson
         indict = json.load(f)
 
         # extract file
-        self.config = indict['config']
-        self.material = indict['material']
-        self.source = indict['source']
-        self.listener = indict['listener']
+        self.config = indict["config"]
+        self.material = indict["material"]
+        self.source = indict["source"]
+        self.listener = indict["listener"]
 
         # close file
         f.close()
@@ -54,11 +54,15 @@ class Job:
 
     def save(self, fname):
         # open file
-        f = open(fname, 'wb')
+        f = open(fname, "wb")
 
         # put everything in one dict
-        outdict = {'config': self.config, 'material': self.material,
-                'source': self.source, 'listener': self.listener}
+        outdict = {
+            "config": self.config,
+            "material": self.material,
+            "source": self.source,
+            "listener": self.listener,
+        }
 
         # json
         json.dump(outdict, f, sort_keys=True, indent=4)
@@ -71,29 +75,30 @@ class Job:
 
     def get_solver(self):
         # create empty solver
-        solver = Solver(Field(self.config['size'], self.config['delta']))
+        solver = Solver(Field(self.config["size"], self.config["delta"]))
 
         # create parser
         parser = BooleanParser()
 
         # get meshgrid
-        x, y = solver.material['electric'].meshgrid
+        x, y = solver.material["electric"].meshgrid
 
         # create materials
-        for name, mask, function in self.material['electric']:
-            solver.material['electric'][parser.parse(str(mask), x=x, y=y)] = \
-                    material_from_string(function, {'epsilon':
-                        Material.epsilon})
+        for name, mask, function in self.material["electric"]:
+            solver.material["electric"][parser.parse(str(mask), x=x, y=y)] = (
+                material_from_string(function, {"epsilon": Material.epsilon})
+            )
 
-        for name, mask, function in self.material['magnetic']:
-            solver.material['magnetic'][parser.parse(str(mask), x=x, y=y)] = \
-                    material_from_string(function, {'mu':
-                        Material.mu})
+        for name, mask, function in self.material["magnetic"]:
+            solver.material["magnetic"][parser.parse(str(mask), x=x, y=y)] = (
+                material_from_string(function, {"mu": Material.mu})
+            )
 
         # create source
         for name, mask, function in self.source:
-            solver.source[parser.parse(str(mask), x=x, y=y)] = \
-                    source_from_string(function)
+            solver.source[parser.parse(str(mask), x=x, y=y)] = source_from_string(
+                function
+            )
 
         # create listener
         for name, x, y in self.listener:

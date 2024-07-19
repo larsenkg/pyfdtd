@@ -1,1 +1,1 @@
-from booleanparser import BooleanParser
+from .booleanparser import BooleanParser

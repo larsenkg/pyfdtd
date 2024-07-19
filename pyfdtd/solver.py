@@ -17,15 +17,18 @@
 
 
 import math
+
 import numpy
 from scipy import constants
-from material import Material
-from pml import pml
+
+from .material import Material
+from .pml import pml
 
 
 class Solver:
     """Solves FDTD equations on given field, with given materials and ports"""
-    def __init__(self, field, mode='TMz'):
+
+    def __init__(self, field, mode="TMz"):
         # save arguments
         self.field = field
         self.mode = mode
@@ -38,39 +41,44 @@ class Solver:
 
         # create materials
         self.material = {}
-        self.material['electric'] = Material(field.size, field.delta)
-        self.material['magnetic'] = Material(field.size, field.delta)
+        self.material["electric"] = Material(field.size, field.delta)
+        self.material["magnetic"] = Material(field.size, field.delta)
 
         # add free space layer
-        self.material['electric'][:, :] = Material.epsilon()
-        self.material['magnetic'][:, :] = Material.mu()
+        self.material["electric"][:, :] = Material.epsilon()
+        self.material["magnetic"][:, :] = Material.mu()
 
         # add pml layer
         electric, magnetic, mask = pml(field.size, field.delta, mode=mode)
-        self.material['electric'][mask] = electric
-        self.material['magnetic'][mask] = magnetic
+        self.material["electric"][mask] = electric
+        self.material["magnetic"][mask] = magnetic
 
-    def solve(self, duration, starttime=0.0, deltaT=0.0,
-            progressfunction=None, finishfunction=None):
+    def solve(
+        self,
+        duration,
+        starttime=0.0,
+        deltaT=0.0,
+        progressfunction=None,
+        finishfunction=None,
+    ):
         """Iterates the FDTD algorithm in respect of the pre-defined ports"""
         # get parameter
         deltaX, deltaY = self.field.delta
 
         # calc deltaT
         if deltaT == 0.0:
-            deltaT = 1.0 / (constants.c * math.sqrt(1.0 / \
-                    deltaX ** 2 + 1.0 / deltaY ** 2))
+            deltaT = 1.0 / (constants.c * math.sqrt(1.0 / deltaX**2 + 1.0 / deltaY**2))
 
         # create constants
         kx = deltaT / deltaX
         ky = deltaT / deltaY
 
         # material aliases
-        material1 = 'electric'
-        material2 = 'magnetic'
+        material1 = "electric"
+        material2 = "magnetic"
 
         # apply mode
-        if self.mode == 'TEz':
+        if self.mode == "TEz":
             kx, ky = -ky, -ky
             material1, material2 = material2, material1
 
@@ -93,37 +101,44 @@ class Solver:
 
     def _step(self, deltaT, t, kx, ky, material1, material2):
         # calc oddField
-        self.field.oddFieldY['flux'][:-1, :-1] += kx * \
-            (self.field.evenFieldY['field'][1:, :-1] - \
-            self.field.evenFieldY['field'][:-1, :-1])
-        self.field.oddFieldX['flux'][:-1, :-1] -= ky * \
-            (self.field.evenFieldX['field'][:-1, 1:] - \
-            self.field.evenFieldX['field'][:-1, :-1])
+        self.field.oddFieldY["flux"][:-1, :-1] += kx * (
+            self.field.evenFieldY["field"][1:, :-1]
+            - self.field.evenFieldY["field"][:-1, :-1]
+        )
+        self.field.oddFieldX["flux"][:-1, :-1] -= ky * (
+            self.field.evenFieldX["field"][:-1, 1:]
+            - self.field.evenFieldX["field"][:-1, :-1]
+        )
 
         # apply sources
-        sourceX, sourceY = self.source.apply((self.field.oddFieldX['flux'],
-            self.field.oddFieldY['flux']), deltaT, t)
-        self.field.oddFieldX['flux'] += sourceX
-        self.field.oddFieldY['flux'] += sourceY
+        sourceX, sourceY = self.source.apply(
+            (self.field.oddFieldX["flux"], self.field.oddFieldY["flux"]), deltaT, t
+        )
+        self.field.oddFieldX["flux"] += sourceX
+        self.field.oddFieldY["flux"] += sourceY
 
         # apply material
-        self.field.oddFieldX['field'], self.field.oddFieldY['field'] = \
-            self.material[material1].apply((self.field.oddFieldX['flux'],
-                self.field.oddFieldY['flux']), deltaT, t)
+        self.field.oddFieldX["field"], self.field.oddFieldY["field"] = self.material[
+            material1
+        ].apply((self.field.oddFieldX["flux"], self.field.oddFieldY["flux"]), deltaT, t)
 
         # calc evenField
-        self.field.evenFieldX['flux'][:-1, 1:-1] -= ky * \
-            (self.field.oddFieldX['field'][:-1, 1:-1] + \
-            self.field.oddFieldY['field'][:-1, 1:-1] - \
-            self.field.oddFieldX['field'][:-1, :-2] - \
-            self.field.oddFieldY['field'][:-1, :-2])
-        self.field.evenFieldY['flux'][1:-1, :-1] += kx * \
-            (self.field.oddFieldX['field'][1:-1, :-1] + \
-            self.field.oddFieldY['field'][1:-1, :-1] - \
-            self.field.oddFieldX['field'][:-2, :-1] - \
-            self.field.oddFieldY['field'][:-2, :-1])
+        self.field.evenFieldX["flux"][:-1, 1:-1] -= ky * (
+            self.field.oddFieldX["field"][:-1, 1:-1]
+            + self.field.oddFieldY["field"][:-1, 1:-1]
+            - self.field.oddFieldX["field"][:-1, :-2]
+            - self.field.oddFieldY["field"][:-1, :-2]
+        )
+        self.field.evenFieldY["flux"][1:-1, :-1] += kx * (
+            self.field.oddFieldX["field"][1:-1, :-1]
+            + self.field.oddFieldY["field"][1:-1, :-1]
+            - self.field.oddFieldX["field"][:-2, :-1]
+            - self.field.oddFieldY["field"][:-2, :-1]
+        )
 
         # apply material
-        self.field.evenFieldX['field'], self.field.evenFieldY['field'] = \
-            self.material[material2].apply((self.field.evenFieldX['flux'],
-                self.field.evenFieldY['flux']), deltaT, t)
+        self.field.evenFieldX["field"], self.field.evenFieldY["field"] = self.material[
+            material2
+        ].apply(
+            (self.field.evenFieldX["flux"], self.field.evenFieldY["flux"]), deltaT, t
+        )

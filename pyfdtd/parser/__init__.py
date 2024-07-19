@@ -15,5 +15,5 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from booleanparser import BooleanParser
-from functionparser import source_from_string, material_from_string
+from .booleanparser import BooleanParser
+from .functionparser import material_from_string, source_from_string
